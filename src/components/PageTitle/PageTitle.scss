@@ -1,0 +1,24 @@
+.Page-title-wrapper {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+
+  .Page-title-group {
+    display: inline-flex;
+    margin-bottom: 8px;
+    .Page-title__text {
+      font-weight: 500;
+      margin: 0;
+    }
+  }
+}
+
+@media screen and (max-width: 1000px) {
+  .Page-title-wrapper {
+    .Page-title-group {
+      .Page-title__text {
+        font-size: var(--font-size-h1);
+      }
+    }
+  }
+}

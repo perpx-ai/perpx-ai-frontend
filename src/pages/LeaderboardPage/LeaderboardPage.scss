@@ -1,0 +1,712 @@
+$tabs-threshold: 990px;
+
+.LeaderboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1.5rem 0;
+}
+
+.Leaderboard-Title {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+.Leaderboard-Title h1 {
+  margin: 0 0 1rem;
+  display: flex;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+
+  @media screen and (max-width: $tabs-threshold) {
+    font-size: 2rem;
+  }
+}
+
+.Leaderboard-Title img {
+  margin-left: 1rem;
+}
+
+.GlobalLeaderboards .LeaderboardContainer__competition-tabs .Tab {
+  width: 40rem;
+  margin: 0 auto;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+
+.LeaderboardContainer__competition-tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+@media screen and (max-width: 600px) {
+  .GlobalLeaderboards .Tab {
+    width: unset;
+  }
+
+  .GlobalLeaderboards .Tab-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .LeaderboardHeader {
+    display: block;
+  }
+
+  .LeaderboardSearch.TopPositionsSearch {
+    width: unset;
+  }
+}
+
+.Table .formula {
+  font-style: italic;
+}
+
+.TopPositionsItem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.TopPositionsItem img,
+.TopPositionsItem span {
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.LeaderboardSearch {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 30rem;
+}
+
+.TopPositionsPositionCell .Tooltip {
+  display: inline-block;
+  width: 100%;
+}
+
+.TopPositionsPositionCell .Tooltip-handle {
+  display: inline-block;
+  width: 100%;
+}
+
+.TopPositionsPositionView {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  text-decoration: inherit;
+}
+
+.TopPositionsPositionView .TopPositionsSymbol {
+  display: inline-block;
+  text-decoration: inherit;
+}
+
+.TopPositionsMarketName {
+  margin-right: 0.5rem;
+}
+
+.TopPositionsDirection {
+  margin-left: 0.5rem;
+  text-align: left;
+  width: 4.4rem;
+}
+
+.LeaderboardSearch.disabled {
+  cursor: not-allowed;
+}
+
+.LeaderboardRank-1,
+.LeaderboardRank-2,
+.LeaderboardRank-3,
+.LeaderboardRank-4 {
+  display: inline-flex;
+}
+
+.LeaderboardRankCell-Pinned::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: var(--color-cold-blue-500);
+}
+
+.LeaderboardRank-1::after,
+.LeaderboardRank-2::after,
+.LeaderboardRank-3::after,
+.LeaderboardRank-4::after {
+  content: "";
+  width: 2.5rem;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  margin-left: 0.5rem;
+  position: absolute;
+  left: 31px;
+  top: 10px;
+  z-index: 111;
+  height: 2.5rem;
+}
+
+.NoLiqPriceTooltip {
+  min-width: 28rem;
+  white-space: normal;
+}
+
+.LeaderboardRank-1::after {
+  background-image: url(../../img/rank1.svg);
+}
+
+.LeaderboardRank-2::after {
+  background-image: url(../../img/rank2.svg);
+}
+
+.LeaderboardRank-3::after {
+  background-image: url(../../img/rank3.svg);
+}
+
+.LeaderboardRank-4::after {
+  background-image: url(../../img/rank4.svg);
+}
+
+.CompetitionPrizes {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+
+  &__prize {
+    display: flex;
+    width: 100%;
+
+    &-container {
+      flex: 1 1;
+      margin-right: 1.8rem;
+      background-color: var(--color-slate-800);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 0.5rem;
+      text-align: left;
+      padding: 2rem 2rem;
+      min-width: 21rem;
+      display: flex;
+      flex-direction: column;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+
+    &-text {
+      display: flex;
+      flex-direction: column;
+      white-space: nowrap;
+      margin-left: 2rem;
+      flex: 2;
+      position: relative;
+      top: 0.5rem;
+    }
+
+    &-icon-container {
+      display: flex;
+      flex: 1;
+      text-align: center;
+    }
+
+    &-icon {
+      position: relative;
+      top: 0.1rem;
+      width: 100%;
+    }
+
+    &-title {
+      color: var(--color-gray-300);
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+
+      @media screen and (max-width: 1100px) {
+        font-size: 1.2rem;
+      }
+    }
+
+    &-description {
+      color: var(--color-white);
+      margin-bottom: 1rem;
+      white-space: nowrap;
+      font-size: 2rem;
+
+      @media screen and (max-width: 1100px) {
+        font-size: 1.5rem;
+      }
+    }
+  }
+
+  &__prize-winners-container {
+    display: flex;
+    align-items: center;
+    font-size: 1.4rem;
+    user-select: none;
+    margin-top: 1rem;
+    justify-content: space-between;
+    width: 100%;
+
+    @media screen and (max-width: 1180px) {
+      justify-content: center;
+    }
+  }
+
+  &__prize-winners {
+    display: flex;
+    background: #222641;
+    border-radius: 9999rem;
+    padding: 0.3rem 1rem;
+  }
+
+  &__prize-winners-text {
+    color: #ffffffb3;
+
+    @media screen and (max-width: 1180px) {
+      display: none;
+    }
+  }
+
+  &__prize-winner {
+    display: flex;
+    align-items: center;
+
+    &_many {
+      margin-right: 0.5rem;
+
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+  }
+
+  &__prize-rest {
+    margin-left: 0.5rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+
+  &__tooltip-winner &__prize-rest {
+    margin-left: 1rem;
+  }
+
+  &__tooltip-winner {
+    display: flex;
+    text-decoration: none !important;
+    margin-bottom: 1rem;
+    color: white !important;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__prize-winner-tooltip .Tooltip-popup {
+    min-width: 0 !important;
+  }
+
+  .Tooltip-handle {
+    text-decoration: none;
+    align-items: center;
+    top: 0.2rem;
+  }
+
+  a {
+    text-decoration: none;
+    font-family: monospace;
+  }
+}
+
+.CompetitionCountdown {
+  &__time {
+    color: var(--color-white);
+  }
+  &_desktop &__time {
+    white-space: nowrap;
+    font-size: 3rem;
+    margin-left: 0.5rem;
+
+    @media screen and (max-width: $tabs-threshold) {
+      font-size: 2rem;
+    }
+  }
+
+  &__end {
+    display: flex;
+    position: absolute;
+    right: var(--default-container-padding);
+    top: 1.8rem;
+
+    @media screen and (max-width: 1000px) {
+      position: static;
+    }
+  }
+
+  &_desktop {
+    position: absolute;
+    right: 0;
+    top: 0;
+
+    color: var(--color-gray-300);
+    white-space: nowrap;
+
+    @media screen and (max-width: $tabs-threshold) {
+      position: relative;
+      text-align: center;
+      margin-top: 2rem;
+    }
+  }
+
+  &_mobile {
+    display: block;
+  }
+
+  &_mobile::after {
+    content: ".";
+  }
+}
+
+.LeaderboardContainer__leaderboard-tabs {
+  margin-bottom: 1rem;
+  margin-top: 3rem;
+
+  &_positions {
+    visibility: hidden;
+  }
+}
+
+.LeaderboardNavigation {
+  display: flex;
+  overflow-x: auto;
+}
+
+.LeaderboardHeader__network-icon {
+  margin-left: 1rem;
+  width: 1.7rem;
+}
+
+.LeaderboardHeader__item {
+  white-space: nowrap;
+
+  &_selected {
+    background: var(--color-slate-600) !important;
+  }
+}
+
+.Leaderboard__another-network {
+  margin-top: 0.1rem;
+}
+
+.LeaderboardNavigation__chip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999rem;
+  font-size: 1.1rem;
+  padding: 0.3rem 0.6rem;
+  margin-right: 0.8rem;
+  height: 2.2rem;
+
+  &_soon {
+    background-color: var(--color-blue-600);
+  }
+
+  &_over {
+    background-color: rgb(180 187 255 / 10%);
+  }
+
+  &_live {
+    background-color: #b42941;
+    color: var(--color-white);
+  }
+
+  &-circle {
+    background-color: var(--color-white);
+    border-radius: 9999rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    display: inline-block;
+    margin-right: 0.3rem;
+  }
+}
+
+.TableBox {
+  width: 100%;
+  overflow: visible;
+  background-color: var(--color-slate-800);
+  padding-bottom: 10px;
+
+  .text-right {
+    text-align: right;
+    padding-right: 2rem;
+  }
+
+  .Exchange-list-header {
+    font-size: var(--font-size-body-medium);
+  }
+
+  .Exchange-list-header .text-right {
+    padding-right: 1.6rem;
+  }
+
+  // Ensure proper column alignment - using !important to override Tailwind classes
+  table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+
+    th,
+    td {
+      padding: 1.6rem 2rem !important;
+      vertical-align: middle !important;
+      -webkit-font-smoothing: antialiased !important;
+      -moz-osx-font-smoothing: grayscale !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    // Specific column widths and alignment for 3 columns: Rank, Address, Total Points.
+    // The accounts table has more columns and sets its own widths, so it opts out.
+    &:not(.LeaderboardPage__table) {
+      th:nth-child(1),
+      td:nth-child(1) {
+        width: 15% !important;
+        text-align: left !important;
+        padding-left: 2rem !important;
+      }
+
+      th:nth-child(2),
+      td:nth-child(2) {
+        width: 35% !important;
+        text-align: left !important;
+      }
+
+      th:nth-child(3),
+      td:nth-child(3) {
+        width: 30% !important;
+        text-align: left !important;
+      }
+    }
+
+    thead th {
+      font-weight: 600 !important;
+      color: var(--color-typography-secondary) !important;
+      text-transform: uppercase !important;
+      font-size: 1.2rem !important;
+      letter-spacing: 0.08em !important;
+      padding-top: 1.2rem !important;
+      padding-bottom: 1.2rem !important;
+      border-bottom: 1px solid var(--color-slate-700) !important;
+      background-color: var(--color-slate-800) !important;
+    }
+
+    tbody td {
+      font-size: 1.5rem !important;
+      color: var(--color-typography-primary) !important;
+      border-bottom: 1px solid var(--color-slate-700) !important;
+      line-height: 1.5 !important;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease !important;
+
+      &:hover {
+        background-color: var(--color-slate-750) !important;
+      }
+
+      &:last-child td {
+        border-bottom: none !important;
+      }
+    }
+  }
+}
+
+// Accounts table: widths come from the inline styles on each header cell, and the
+// tighter padding keeps long headers such as "Today's Volume" from being ellipsized.
+.TableBox table.LeaderboardPage__table {
+  th,
+  td {
+    padding: 1.4rem 1rem !important;
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-left: 1.6rem !important;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 1.6rem !important;
+  }
+
+  thead th {
+    letter-spacing: 0.04em !important;
+  }
+}
+
+.TableBox table.Exchange-list.App-box.Table {
+  border-radius: 0;
+}
+
+.TableBox__head {
+  padding: 16px;
+}
+
+.TableBox table.Exchange-list tr {
+  border: none;
+}
+
+.TableBox table.Exchange-list tr:hover {
+  cursor: default;
+  box-shadow: none;
+}
+
+@media screen and (max-width: 1200px) {
+  .TableBox {
+    width: 100%;
+    overflow-x: scroll;
+    overflow-y: visible;
+  }
+  .Table {
+    width: 1200px;
+  }
+}
+
+table.Table.Exchange-list th {
+  opacity: unset;
+}
+
+.Table_tr {
+  position: relative;
+}
+
+.Table_tr td {
+  z-index: 1;
+  position: relative;
+}
+
+.Table-SizeTooltip .Tooltip-popup {
+  min-width: 38rem !important;
+  max-width: 38rem !important;
+}
+
+// Leaderboard specific cell styling
+.leaderboard-cell-rank {
+  font-weight: 600 !important;
+}
+
+.leaderboard-cell-address {
+  font-family: monospace !important;
+}
+
+.leaderboard-cell-trade,
+.leaderboard-cell-volume,
+.leaderboard-cell-points {
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.leaderboard-cell-time {
+  font-size: 1.3rem !important;
+  color: var(--color-typography-secondary) !important;
+}
+
+// Leaderboard page display (reference-style)
+.LeaderboardPage__filter-bar {
+  flex-wrap: wrap;
+}
+
+.LeaderboardPage__table {
+  thead th {
+    font-weight: 600;
+    color: var(--color-typography-secondary);
+    border-bottom: 1px solid var(--color-slate-700);
+    background-color: var(--color-slate-800);
+  }
+  tbody td {
+    border-bottom: 1px solid var(--color-slate-700);
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.LeaderboardPage__row {
+  transition: background-color 0.2s ease;
+  &:hover {
+    background-color: var(--color-slate-750);
+  }
+  &--rank-1 {
+    background: linear-gradient(90deg, rgba(166, 122, 68, 0.25) 0%, rgba(166, 122, 68, 0.08) 100%);
+    &:hover {
+      background: linear-gradient(90deg, rgba(166, 122, 68, 0.3) 0%, rgba(166, 122, 68, 0.12) 100%);
+    }
+  }
+  &--rank-2 {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.2) 0%, rgba(148, 163, 184, 0.06) 100%);
+    &:hover {
+      background: linear-gradient(90deg, rgba(148, 163, 184, 0.25) 0%, rgba(148, 163, 184, 0.1) 100%);
+    }
+  }
+  &--rank-3 {
+    background: linear-gradient(90deg, rgba(120, 83, 60, 0.25) 0%, rgba(120, 83, 60, 0.08) 100%);
+    &:hover {
+      background: linear-gradient(90deg, rgba(120, 83, 60, 0.3) 0%, rgba(120, 83, 60, 0.12) 100%);
+    }
+  }
+}
+
+.LeaderboardPage__rank-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.LeaderboardPage__rank-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  &--1 {
+    filter: drop-shadow(0 0 2px rgba(166, 122, 68, 0.5));
+  }
+  &--2 {
+    filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.5));
+  }
+  &--3 {
+    filter: drop-shadow(0 0 2px rgba(120, 83, 60, 0.5));
+  }
+}
+
+.LeaderboardPage__rank-num {
+  font-weight: 600;
+  min-width: 1.6rem;
+  &--circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--color-white);
+    color: var(--color-slate-800);
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+}

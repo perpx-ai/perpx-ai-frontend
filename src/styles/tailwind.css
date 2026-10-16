@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Restore native webkit behavior */
+    @apply leading-base;
+    /* Prevent layout shift when modal removes scrollbar */
+    scrollbar-gutter: stable;
+  }
+
+  input,
+  textarea {
+    /* Restore native webkit behavior */
+    @apply placeholder-gray;
+  }
+}
+
+/* Compact react-tweet embed for quest cards */
+.tweet-embed-compact .react-tweet-theme {
+  --tweet-container-margin: 0;
+  --tweet-font-size: 13px;
+  --tweet-body-font-size: 13px;
+  --tweet-header-font-size: 13px;
+  --tweet-quoted-container-margin: 8px 0 0 0;
+  --tweet-info-font-size: 12px;
+  --tweet-actions-font-size: 12px;
+  --tweet-border-radius: 0;
+  --tweet-border: none;
+  margin: 0 !important;
+}
+
+.tweet-embed-compact .react-tweet-theme > article {
+  padding: 10px !important;
+  border: none !important;
+}
+
+/* Hide reply/action footer to save vertical space */
+.tweet-embed-compact [class*="tweet-actions"],
+.tweet-embed-compact [class*="tweet-replies"],
+.tweet-embed-compact [class*="tweet-info-created-at"] {
+  display: none !important;
+}
+
+/* Shrink media/images */
+.tweet-embed-compact [class*="tweet-media"] img,
+.tweet-embed-compact [class*="tweet-media"] video {
+  max-height: 140px !important;
+  object-fit: cover !important;
+}

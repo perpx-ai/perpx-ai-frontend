@@ -1,0 +1,54 @@
+.custody-wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #1f2937;
+  color: white;
+  border: 1px solid #374151;
+  cursor: pointer;
+  font-size: 14px;
+  min-height: 36px;
+  min-width: 120px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #111827;
+  }
+}
+
+.custody-wallet-icon {
+  width: 16px;
+  height: 16px;
+  color: #3b82f6;
+}
+
+.custody-wallet-text {
+  white-space: nowrap;
+}
+
+.custody-wallet-divider {
+  width: 1px;
+  height: 20px;
+  background: #374151;
+  flex-shrink: 0;
+}
+
+.custody-wallet-balance {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #d1d5db;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .custody-wallet-btn {
+    padding: 8px;
+    min-width: 36px;
+  }
+  
+  .custody-wallet-text {
+    display: none;
+  }
+}

@@ -1,0 +1,651 @@
+import { Plural, t, Trans } from "@lingui/macro";
+import cx from "classnames";
+import uniq from "lodash/uniq";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+
+import { getSyntheticsListSectionKey } from "config/localStorage";
+import { usePendingTxns } from "context/PendingTxnsContext/PendingTxnsContext";
+import { useSettings } from "context/SettingsContext/SettingsContextProvider";
+import { useClosingPositionKeyState, useTokensData } from "context/SyntheticsStateContext/hooks/globalsHooks";
+import { useCancellingOrdersKeysState } from "context/SyntheticsStateContext/hooks/orderEditorHooks";
+import { useOrderErrorsCount } from "context/SyntheticsStateContext/hooks/orderHooks";
+import { selectChartToken } from "context/SyntheticsStateContext/selectors/chartSelectors";
+import { selectClaimablesCount } from "context/SyntheticsStateContext/selectors/claimsSelectors";
+import { selectExpressGlobalParams } from "context/SyntheticsStateContext/selectors/expressSelectors";
+import {
+  selectChainId,
+  selectOrdersInfoData,
+  selectPositionsInfoData,
+  selectSrcChainId,
+  selectSubaccountForChainAction,
+} from "context/SyntheticsStateContext/selectors/globalSelectors";
+import { selectOrdersCount } from "context/SyntheticsStateContext/selectors/orderSelectors";
+import {
+  selectTradeboxMaxLiquidityPath,
+  selectTradeboxSetActiveOrder,
+  selectTradeboxSetActivePosition,
+  selectTradeboxState,
+  selectTradeboxTradeFlags,
+} from "context/SyntheticsStateContext/selectors/tradeboxSelectors";
+import { useCalcSelector, useSelector } from "context/SyntheticsStateContext/utils";
+import { estimateBatchExpressParams } from "domain/synthetics/express/expressOrderUtils";
+import { useExternalSwapHandler } from "domain/synthetics/externalSwaps/useExternalSwapHandler";
+import { OrderTypeFilterValue } from "domain/synthetics/orders/ordersFilters";
+import { sendBatchOrderTxn } from "domain/synthetics/orders/sendBatchOrderTxn";
+import type { OrderInfo } from "domain/synthetics/orders/types";
+import { useOrderTxnCallbacks } from "domain/synthetics/orders/useOrderTxnCallbacks";
+import { useSetOrdersAutoCancelByQueryParams } from "domain/synthetics/orders/useSetOrdersAutoCancelByQueryParams";
+import { TradeMode } from "domain/synthetics/trade";
+import { useTradeParamsProcessor } from "domain/synthetics/trade/useTradeParamsProcessor";
+import { useShareSuccessClosedPosition } from "domain/synthetics/tradeHistory/useShareSuccessClosedPosition";
+import { useInterviewNotification } from "domain/synthetics/userFeedback/useInterviewNotification";
+import { getMidPrice } from "domain/tokens";
+import { useChainId } from "lib/chains";
+import { defined } from "lib/guards";
+import { getPageTitle } from "lib/legacy";
+import { useLocalStorageSerializeKey } from "lib/localStorage";
+import { useMeasureComponentMountTime } from "lib/metrics/useMeasureComponentMountTime";
+import { formatUsdPrice } from "lib/numbers";
+import { EMPTY_ARRAY, getByKey } from "lib/objects";
+import { useJsonRpcProvider } from "lib/rpc";
+import { useBreakpoints } from "lib/useBreakpoints";
+import { useHyperliquidPositions } from "lib/useHyperliquidPositions";
+import { useCustodyWallet } from "context/CustodyWalletContext/CustodyWalletContextProvider";
+import { useEthersSigner } from "lib/wallets/useEthersSigner";
+import useWallet from "lib/wallets/useWallet";
+import { ContractsChainId } from "sdk/configs/chains";
+import { getTokenVisualMultiplier } from "sdk/configs/tokens";
+import { getOrderKeys } from "sdk/utils/orders";
+
+import { Helmet } from "react-helmet";
+import { AppHeader } from "components/AppHeader/AppHeader";
+import AppPageLayout from "components/AppPageLayout/AppPageLayout";
+import Badge, { BadgeIndicator } from "components/Badge/Badge";
+import Checkbox from "components/Checkbox/Checkbox";
+import { Claims } from "components/Claims/Claims";
+import { InterviewModal } from "components/InterviewModal/InterviewModal";
+import { NpsModal } from "components/NpsModal/NpsModal";
+import { OneClickPromoBanner } from "components/OneClickPromoBanner/OneClickPromoBanner";
+import { OrderList } from "components/OrderList/OrderList";
+import { PositionEditor } from "components/PositionEditor/PositionEditor";
+import { PositionList } from "components/PositionList/PositionList";
+import { PositionSeller } from "components/PositionSeller/PositionSeller";
+import { SwapCard } from "components/SwapCard/SwapCard";
+import type { MarketFilterLongShortItemData } from "components/TableMarketFilter/MarketFilterLongShort";
+import Tabs from "components/Tabs/Tabs";
+import { useIsCurtainOpen } from "components/TradeBox/Curtain";
+import { TradeBoxResponsiveContainer } from "components/TradeBox/TradeBoxResponsiveContainer";
+import { TradeHistory } from "components/TradeHistory/TradeHistory";
+import ShareClosedPosition from "components/TradeHistory/TradeHistoryRow/ShareClosedPosition";
+import { Chart } from "components/TVChart/Chart";
+import ChartHeader from "components/TVChart/ChartHeader";
+
+import logoIcon from "img/logo-icon.svg";
+import LogoText from "img/logo-text.svg?react";
+
+export type Props = {
+  openSettings: () => void;
+};
+
+enum ListSection {
+  Positions = "Positions",
+  Orders = "Orders",
+  Trades = "Trades",
+  // Claims = "Claims",
+}
+
+export function SyntheticsPage(p: Props) {
+  const { openSettings } = p;
+  const { chainId } = useChainId();
+  const { account } = useWallet();
+  const calcSelector = useCalcSelector();
+  const { setPendingTxns } = usePendingTxns();
+
+  const {
+    tradeAction: shareSuccessTradeAction,
+    isShareModalOpen: isShareSuccessModalOpen,
+    setIsShareModalOpen: setIsShareSuccessModalOpen,
+    doNotShowAgain: shareSuccessDoNotShowAgain,
+    onDoNotShowAgainChange: handleShareSuccessDoNotShowAgainChange,
+    onShareAction: handleShareSuccessShareAction,
+  } = useShareSuccessClosedPosition({ chainId, account });
+
+  useExternalSwapHandler();
+
+  const [isSettling, setIsSettling] = useState(false);
+  const [listSection, setListSection] = useLocalStorageSerializeKey(
+    getSyntheticsListSectionKey(chainId),
+    ListSection.Positions
+  );
+
+  const tabsContentTabletRef = useRef<HTMLDivElement>(null);
+
+  const [, setClosingPositionKeyRaw] = useClosingPositionKeyState();
+  const setClosingPositionKey = useCallback(
+    (key: string | undefined) => requestAnimationFrame(() => setClosingPositionKeyRaw(key)),
+    [setClosingPositionKeyRaw]
+  );
+
+  const setActivePosition = useSelector(selectTradeboxSetActivePosition);
+  const setActiveOrder = useSelector(selectTradeboxSetActiveOrder);
+
+  useTradeParamsProcessor();
+  useSetOrdersAutoCancelByQueryParams();
+
+  const { isInterviewModalVisible, setIsInterviewModalVisible } = useInterviewNotification();
+
+  const { chartToken } = useSelector(selectChartToken);
+
+  const { errors: ordersErrorsCount, warnings: ordersWarningsCount } = useOrderErrorsCount();
+  const ordersCount = useSelector(selectOrdersCount);
+  const gmxPositionsCount = useSelector((s) => Object.keys(selectPositionsInfoData(s) || {}).length);
+  const { custodyWalletAddress } = useCustodyWallet();
+  const { positions: hlPositions } = useHyperliquidPositions(custodyWalletAddress ?? account);
+  const positionsCount = gmxPositionsCount + hlPositions.length;
+  const totalClaimables = useSelector(selectClaimablesCount);
+
+  const { savedAllowedSlippage, shouldShowPositionLines, setShouldShowPositionLines } = useSettings();
+
+  const {
+    isCancelOrdersProcessing,
+    selectedOrderKeys,
+    setSelectedOrderKeys,
+    onCancelSelectedOrders,
+    onCancelOrder,
+    marketsDirectionsFilter,
+    setMarketsDirectionsFilter,
+    orderTypesFilter,
+    setOrderTypesFilter,
+  } = useOrdersControl();
+
+  const { maxLiquidity: swapOutLiquidity } = useSelector(selectTradeboxMaxLiquidityPath);
+  const tokensData = useTokensData();
+  const { fromTokenAddress, toTokenAddress } = useSelector(selectTradeboxState);
+  const fromToken = getByKey(tokensData, fromTokenAddress);
+  const toToken = getByKey(tokensData, toTokenAddress);
+
+  const [selectedPositionOrderKey, setSelectedPositionOrderKey] = useState<string>();
+
+  const handlePositionListOrdersClick = useCallback(
+    (positionKey: string, orderKey: string | undefined) => {
+      setListSection(ListSection.Orders);
+      startTransition(() => {
+        setSelectedPositionOrderKey(orderKey);
+
+        if (orderKey) {
+          setSelectedOrderKeys([orderKey]);
+          setMarketsDirectionsFilter([]);
+          setOrderTypesFilter([]);
+        }
+      });
+    },
+    [setListSection, setMarketsDirectionsFilter, setOrderTypesFilter, setSelectedOrderKeys]
+  );
+
+  const { isSwap, isTwap } = useSelector(selectTradeboxTradeFlags);
+
+  useEffect(() => {
+    if (!chartToken) return;
+
+    const averagePrice = getMidPrice(chartToken.prices);
+    const currentTokenPriceStr =
+      formatUsdPrice(averagePrice, {
+        visualMultiplier: isSwap ? 1 : chartToken.visualMultiplier,
+      }) || "...";
+
+    const prefix = isSwap ? "" : getTokenVisualMultiplier(chartToken);
+
+    const title = getPageTitle(
+      currentTokenPriceStr +
+        ` | ${prefix}${chartToken?.symbol}${chartToken?.symbol ? "/" : ""}${chartToken?.isStable ? "" : "USD"}`
+    );
+    document.title = title;
+  }, [chartToken, isSwap]);
+
+  const [, setIsCurtainOpen] = useIsCurtainOpen();
+
+  const onSelectPositionClick = useCallback(
+    (key: string, tradeMode?: TradeMode, showCurtain = false) => {
+      const positionsInfoData = calcSelector(selectPositionsInfoData);
+      const position = getByKey(positionsInfoData, key);
+
+      if (!position) return;
+
+      setActivePosition(getByKey(positionsInfoData, key), tradeMode);
+      if (showCurtain) {
+        setIsCurtainOpen(true);
+      }
+    },
+    [calcSelector, setActivePosition, setIsCurtainOpen]
+  );
+
+  const onSelectOrderClick = useCallback(
+    (orderKey: string) => {
+      const ordersInfoData = calcSelector(selectOrdersInfoData);
+      const order = getByKey(ordersInfoData, orderKey);
+
+      if (!order) return;
+
+      setActiveOrder(order);
+    },
+    [calcSelector, setActiveOrder]
+  );
+
+  const renderOrdersTabTitle = useCallback(() => {
+    if (!ordersCount) {
+      return (
+        <div>
+          <Trans>Orders</Trans>
+        </div>
+      );
+    }
+
+    let indicator: BadgeIndicator | undefined = undefined;
+
+    if (ordersWarningsCount > 0 && !ordersErrorsCount) {
+      indicator = "warning";
+    }
+
+    if (ordersErrorsCount > 0) {
+      indicator = "error";
+    }
+
+    return (
+      <div className="flex gap-4">
+        <Trans>Orders</Trans>
+        <Badge indicator={indicator}>{ordersCount}</Badge>
+      </div>
+    );
+  }, [ordersCount, ordersErrorsCount, ordersWarningsCount]);
+
+  const tabLabels = useMemo(
+    () => ({
+      [ListSection.Positions]: (
+        <div className="flex gap-4">
+          <Trans>Positions</Trans>
+          <Badge>{positionsCount}</Badge>
+        </div>
+      ),
+      [ListSection.Orders]: renderOrdersTabTitle(),
+      [ListSection.Trades]: t`Trades`,
+      // [ListSection.Claims]:
+      //   totalClaimables > 0 ? (
+      //     <div className="flex gap-4">
+      //       <Trans>Claims</Trans>
+      //       <Badge>{totalClaimables}</Badge>
+      //     </div>
+      //   ) : (
+      //     t`Claims`
+      //   ),
+    }),
+    [positionsCount, renderOrdersTabTitle, totalClaimables]
+  );
+  const tabsOptions = useMemo(
+    () =>
+      Object.values(ListSection)
+        .filter((value) => value !== ListSection.Claims && value !== ListSection.Orders)
+        .map((value) => ({
+          value,
+          label: tabLabels[value],
+        })),
+    [tabLabels]
+  );
+
+  const handleTabChange = useCallback(
+    (section: ListSection) => {
+      if (tabsContentTabletRef.current) {
+        tabsContentTabletRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+      setListSection(section);
+      startTransition(() => {
+        setOrderTypesFilter([]);
+        setMarketsDirectionsFilter([]);
+        setSelectedOrderKeys([]);
+        setSelectedPositionOrderKey(undefined);
+      });
+    },
+    [setListSection, setMarketsDirectionsFilter, setOrderTypesFilter, setSelectedOrderKeys]
+  );
+
+  useMeasureComponentMountTime({ metricType: "syntheticsPage", onlyForLocation: "#/trade" });
+
+  const { isTablet, isMobile } = useBreakpoints();
+
+  const actions = (
+    <div className="flex shrink-0 items-center gap-16 px-12">
+      {listSection === ListSection.Orders && selectedOrderKeys.length > 0 && (
+        <button
+          className="text-[13px] font-medium text-typography-secondary hover:text-slate-400"
+          disabled={isCancelOrdersProcessing}
+          type="button"
+          onClick={onCancelSelectedOrders}
+        >
+          <Plural value={selectedOrderKeys.length} one="Cancel order" other="Cancel # orders" />
+        </button>
+      )}
+      {[ListSection.Positions, ListSection.Orders].includes(listSection as ListSection) && (
+        <Checkbox
+          isChecked={shouldShowPositionLines}
+          setIsChecked={setShouldShowPositionLines}
+          className={cx("muted chart-positions text-[13px]", { active: shouldShowPositionLines })}
+        >
+          <span className="font-medium">
+            <Trans>Chart positions</Trans>
+          </span>
+        </Checkbox>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+    <Helmet>
+      <meta
+        name="description"
+        content="Trade perpetual BTC, ETH and other top cryptocurrencies with up to 100x leverage directly from your wallet on PerpX."
+      />
+      <meta property="og:description" content="Trade perpetual BTC, ETH and other top cryptocurrencies with up to 100x leverage directly from your wallet on PerpX." />
+    </Helmet>
+    <AppPageLayout
+      header={<AppHeader />}
+      className="max-lg:pb-40"
+      contentClassName="max-w-[none] md:pb-0 md:pt-0"
+      pageWrapperClassName="!pl-0 max-lg:!pl-8 max-md:!pl-0"
+    >
+      <ChartHeader />
+      <div className="flex gap-8 pt-0 max-lg:flex-col lg:grow">
+        <div className="Exchange-left flex grow flex-col gap-8">
+          <OneClickPromoBanner openSettings={openSettings} />
+          <Chart />
+          {!isTablet && (
+            <div className="flex grow flex-col overflow-hidden rounded-8" data-qa="trade-table-large">
+              <Tabs
+                options={tabsOptions}
+                selectedValue={listSection}
+                onChange={handleTabChange}
+                type="block"
+                className="bg-slate-900"
+                qa="exchange-list-tabs"
+                rightContent={actions}
+              />
+
+              {listSection === ListSection.Positions && (
+                <PositionList
+                  onOrdersClick={handlePositionListOrdersClick}
+                  onSelectPositionClick={onSelectPositionClick}
+                  onClosePositionClick={setClosingPositionKey}
+                  openSettings={openSettings}
+                  onCancelOrder={onCancelOrder}
+                />
+              )}
+              {listSection === ListSection.Orders && (
+                <OrderList
+                  selectedOrdersKeys={selectedOrderKeys}
+                  setSelectedOrderKeys={setSelectedOrderKeys}
+                  selectedPositionOrderKey={selectedPositionOrderKey}
+                  setSelectedPositionOrderKey={setSelectedPositionOrderKey}
+                  marketsDirectionsFilter={marketsDirectionsFilter}
+                  setMarketsDirectionsFilter={setMarketsDirectionsFilter}
+                  orderTypesFilter={orderTypesFilter}
+                  setOrderTypesFilter={setOrderTypesFilter}
+                  onCancelSelectedOrders={onCancelSelectedOrders}
+                  onSelectOrderClick={onSelectOrderClick}
+                />
+              )}
+              {listSection === ListSection.Trades && <TradeHistory account={account} />}
+              {/* {listSection === ListSection.Claims && (
+                <Claims
+                  setIsSettling={setIsSettling}
+                  isSettling={isSettling}
+                  setPendingTxns={setPendingTxns}
+                  allowedSlippage={savedAllowedSlippage}
+                />
+              )} */}
+            </div>
+          )}
+        </div>
+
+        {isTablet ? (
+          <>
+            <div className="absolute">
+              <TradeBoxResponsiveContainer />
+            </div>
+            {isSwap && !isTwap && (
+              <SwapCard maxLiquidityUsd={swapOutLiquidity} fromToken={fromToken} toToken={toToken} />
+            )}
+          </>
+        ) : (
+          <div className="w-[40rem] shrink-0 max-xl:w-[36rem]">
+            <TradeBoxResponsiveContainer />
+            {isSwap && !isTwap && (
+              <div className="mt-8 flex flex-col gap-12">
+                <SwapCard maxLiquidityUsd={swapOutLiquidity} fromToken={fromToken} toToken={toToken} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {isTablet && (
+          <div
+            className="flex w-full flex-col overflow-hidden rounded-8"
+            data-qa="trade-table-small"
+            ref={tabsContentTabletRef}
+          >
+            <div className="overflow-x-auto scrollbar-hide">
+              <Tabs
+                options={tabsOptions}
+                selectedValue={listSection}
+                onChange={handleTabChange}
+                type="block"
+                className={cx("w-[max(100%,420px)] rounded-t-8 bg-slate-900", {
+                  "mb-8 rounded-b-8": [ListSection.Positions, ListSection.Orders].includes(listSection as ListSection),
+                })}
+                regularOptionClassname={cx({
+                  "first:rounded-l-8 last:rounded-r-8": [ListSection.Positions, ListSection.Orders].includes(
+                    listSection as ListSection
+                  ),
+                })}
+                rightContent={!isMobile ? actions : undefined}
+              />
+            </div>
+
+            {listSection === ListSection.Positions && (
+              <PositionList
+                onOrdersClick={handlePositionListOrdersClick}
+                onSelectPositionClick={onSelectPositionClick}
+                onClosePositionClick={setClosingPositionKey}
+                openSettings={openSettings}
+                onCancelOrder={onCancelOrder}
+              />
+            )}
+            {listSection === ListSection.Orders && (
+              <OrderList
+                selectedOrdersKeys={selectedOrderKeys}
+                setSelectedOrderKeys={setSelectedOrderKeys}
+                selectedPositionOrderKey={selectedPositionOrderKey}
+                setSelectedPositionOrderKey={setSelectedPositionOrderKey}
+                marketsDirectionsFilter={marketsDirectionsFilter}
+                setMarketsDirectionsFilter={setMarketsDirectionsFilter}
+                orderTypesFilter={orderTypesFilter}
+                setOrderTypesFilter={setOrderTypesFilter}
+                onCancelSelectedOrders={onCancelSelectedOrders}
+                onSelectOrderClick={onSelectOrderClick}
+              />
+            )}
+            {listSection === ListSection.Trades && <TradeHistory account={account} />}
+            {/* {listSection === ListSection.Claims && (
+              <Claims
+                setIsSettling={setIsSettling}
+                isSettling={isSettling}
+                setPendingTxns={setPendingTxns}
+                allowedSlippage={savedAllowedSlippage}
+              />
+            )} */}
+          </div>
+        )}
+      </div>
+      <PositionSeller />
+      <PositionEditor />
+      {shareSuccessTradeAction ? (
+        <ShareClosedPosition
+          tradeAction={shareSuccessTradeAction}
+          isShareModalOpen={isShareSuccessModalOpen}
+          setIsShareModalOpen={setIsShareSuccessModalOpen}
+          doNotShowAgain={shareSuccessDoNotShowAgain}
+          onDoNotShowAgainChange={handleShareSuccessDoNotShowAgainChange}
+          onShareAction={handleShareSuccessShareAction}
+          shareSource="auto-prompt"
+        />
+      ) : null}
+      <InterviewModal type="trader" isVisible={isInterviewModalVisible} setIsVisible={setIsInterviewModalVisible} />
+      <NpsModal />
+    </AppPageLayout>
+    </>
+  );
+}
+
+function useOrdersControl() {
+  const chainId = useSelector(selectChainId) as ContractsChainId;
+  const srcChainId = useSelector(selectSrcChainId);
+  const signer = useEthersSigner();
+  const { provider } = useJsonRpcProvider(chainId);
+  const [cancellingOrdersKeys, setCanellingOrdersKeys] = useCancellingOrdersKeysState();
+  const [selectedOrderKeys, setSelectedOrderKeys] = useState<string[]>(EMPTY_ARRAY);
+
+  const { makeOrderTxnCallback } = useOrderTxnCallbacks();
+
+  const isCancelOrdersProcessing = cancellingOrdersKeys.length > 0;
+
+  const [marketsDirectionsFilter, setMarketsDirectionsFilter] = useState<MarketFilterLongShortItemData[]>([]);
+  const [orderTypesFilter, setOrderTypesFilter] = useState<OrderTypeFilterValue[]>([]);
+  const ordersInfoData = useSelector(selectOrdersInfoData);
+  const globalExpressParams = useSelector(selectExpressGlobalParams);
+  const subaccount = useSelector(selectSubaccountForChainAction);
+
+  const onCancelSelectedOrders = useCallback(
+    async function cancelSelectedOrders() {
+      if (!signer || !provider) return;
+      const orders = selectedOrderKeys.map((key) => getByKey(ordersInfoData, key)).filter(defined) as OrderInfo[];
+      const orderKeys = orders.flatMap(getOrderKeys);
+      setCanellingOrdersKeys((p) => uniq(p.concat(orderKeys)));
+
+      const batchParams = {
+        createOrderParams: [],
+        updateOrderParams: [],
+        cancelOrderParams: orderKeys.map((key) => ({ orderKey: key })),
+      };
+
+      const expressParams = await estimateBatchExpressParams({
+        signer,
+        chainId,
+        batchParams,
+        globalExpressParams,
+        requireValidations: true,
+        estimationMethod: "approximate",
+        provider,
+        isGmxAccount: srcChainId !== undefined,
+        subaccount,
+      });
+
+      sendBatchOrderTxn({
+        chainId,
+        signer,
+        expressParams,
+        batchParams,
+        simulationParams: undefined,
+        provider,
+        callback: makeOrderTxnCallback({}),
+        isGmxAccount: srcChainId !== undefined,
+      })
+        .then(async (tx) => {
+          const txnResult = await tx.wait();
+          if (txnResult?.status === "success") {
+            setSelectedOrderKeys(EMPTY_ARRAY);
+          }
+        })
+        .finally(() => {
+          setCanellingOrdersKeys((p) => p.filter((e) => !orderKeys.includes(e)));
+        });
+    },
+    [
+      chainId,
+      globalExpressParams,
+      makeOrderTxnCallback,
+      ordersInfoData,
+      provider,
+      selectedOrderKeys,
+      setCanellingOrdersKeys,
+      signer,
+      srcChainId,
+      subaccount,
+    ]
+  );
+
+  const onCancelOrder = useCallback(
+    async function cancelOrder(key: string) {
+      if (!signer || !provider) return;
+      const order = getByKey(ordersInfoData, key);
+      if (!order) return;
+
+      const orderKeys = getOrderKeys(order);
+
+      setCanellingOrdersKeys((p) => uniq(p.concat(orderKeys)));
+
+      const batchParams = {
+        createOrderParams: [],
+        updateOrderParams: [],
+        cancelOrderParams: orderKeys.map((key) => ({ orderKey: key })),
+      };
+
+      const expressParams = await estimateBatchExpressParams({
+        signer,
+        chainId,
+        batchParams,
+        globalExpressParams,
+        requireValidations: true,
+        estimationMethod: "approximate",
+        provider,
+        isGmxAccount: srcChainId !== undefined,
+        subaccount,
+      });
+
+      sendBatchOrderTxn({
+        chainId,
+        signer,
+        provider,
+        expressParams,
+        batchParams,
+        simulationParams: undefined,
+        callback: makeOrderTxnCallback({}),
+        isGmxAccount: srcChainId !== undefined,
+      }).finally(() => {
+        setCanellingOrdersKeys((prev) => prev.filter((k) => k !== key));
+        setSelectedOrderKeys((prev) => prev.filter((k) => k !== key));
+      });
+    },
+    [
+      chainId,
+      globalExpressParams,
+      makeOrderTxnCallback,
+      ordersInfoData,
+      provider,
+      setCanellingOrdersKeys,
+      signer,
+      srcChainId,
+      subaccount,
+    ]
+  );
+
+  return {
+    isCancelOrdersProcessing,
+    onCancelSelectedOrders,
+    onCancelOrder,
+    selectedOrderKeys,
+    setSelectedOrderKeys,
+    marketsDirectionsFilter,
+    setMarketsDirectionsFilter,
+    orderTypesFilter,
+    setOrderTypesFilter,
+  };
+}

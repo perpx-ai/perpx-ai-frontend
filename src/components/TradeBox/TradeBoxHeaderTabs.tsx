@@ -1,0 +1,67 @@
+import { useCallback, useMemo } from "react";
+import { useHistory } from "react-router-dom";
+
+import { selectTradeboxState } from "context/SyntheticsStateContext/selectors/tradeboxSelectors";
+import { useSelector } from "context/SyntheticsStateContext/utils";
+import { TradeType } from "domain/synthetics/trade";
+import { useLocalizedMap } from "lib/i18n";
+
+import { SwipeTabs } from "components/SwipeTabs/SwipeTabs";
+import Tabs from "components/Tabs/Tabs";
+
+import { mobileTradeTypeClassNames, tradeTypeClassNames, tradeTypeLabels } from "./tradeboxConstants";
+
+// Hide Swap option - only show Long and Short
+const OPTIONS = Object.values(TradeType).filter((type) => type !== TradeType.Swap);
+
+export function TradeBoxHeaderTabs({ isInCurtain }: { isInCurtain?: boolean }) {
+  const localizedTradeTypeLabels = useLocalizedMap(tradeTypeLabels);
+  const history = useHistory();
+  const { setTradeType: onSelectTradeType, tradeType } = useSelector(selectTradeboxState);
+
+  const onTradeTypeChange = useCallback(
+    (type: TradeType) => {
+      onSelectTradeType(type);
+      if (tradeType !== type) {
+        history.push(`/trade/${type.toLowerCase()}`);
+      }
+    },
+    [history, onSelectTradeType, tradeType]
+  );
+
+  const tabsOptions = useMemo(() => {
+    // Hide Swap option - only show Long and Short
+    return Object.values(TradeType)
+      .filter((type) => type !== TradeType.Swap)
+      .map((type) => ({
+        value: type,
+        label: localizedTradeTypeLabels[type],
+        className: tradeTypeClassNames[type],
+      }));
+  }, [localizedTradeTypeLabels]);
+
+  if (!isInCurtain) {
+    return (
+      <Tabs
+        options={tabsOptions}
+        selectedValue={tradeType}
+        onChange={onTradeTypeChange}
+        size="l"
+        qa="trade-direction"
+        regularOptionClassname="grow"
+        className="bg-slate-900"
+      />
+    );
+  }
+
+  return (
+    <SwipeTabs
+      options={OPTIONS}
+      optionLabels={localizedTradeTypeLabels}
+      option={tradeType}
+      onChange={onTradeTypeChange}
+      optionClassnames={mobileTradeTypeClassNames}
+      qa="trade-direction"
+    />
+  );
+}

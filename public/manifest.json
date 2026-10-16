@@ -1,0 +1,17 @@
+{
+  "short_name": "PerpX",
+  "name": "PerpX",
+  "description": "Trade perpetual with up to 100x leverage directly from your wallet.",
+  "iconPath": "logo.png",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#5dbdb7",
+  "background_color": "#132535"
+}
